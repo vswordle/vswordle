@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { GameBoard } from '../components/GameBoard'
 import { evaluateGuess, hasFiveLetters, isAllowedWord, isGuessSolved, remainingGuesses } from '../lib/wordle'
 import type { KeyboardState } from '../components/Keyboard'
@@ -51,10 +51,24 @@ export function Practice() {
   }
 
   const handleKeyPress = (key: string) => {
-    if (key === 'Enter') { submitGuess(); return }
-    if (key === 'Backspace') { setCurrentGuess((previous) => previous.slice(0, -1)); return }
-    if (/^[A-Z]$/.test(key) && currentGuess.length < 5) setCurrentGuess((previous) => previous + key.toLowerCase())
+    if (finished) return
+    const normalizedKey = key.toUpperCase()
+    if (normalizedKey === 'ENTER') { submitGuess(); return }
+    if (normalizedKey === 'BACKSPACE' || normalizedKey === 'DELETE') { setCurrentGuess((previous) => previous.slice(0, -1)); return }
+    if (/^[A-Z]$/.test(normalizedKey) && currentGuess.length < 5) setCurrentGuess((previous) => previous + normalizedKey.toLowerCase())
   }
+
+  useEffect(() => {
+    const handlePhysicalKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key === 'Enter' || event.key === 'Backspace' || event.key === 'Delete' || /^[a-zA-Z]$/.test(event.key)) {
+        event.preventDefault()
+        handleKeyPress(event.key)
+      }
+    }
+    window.addEventListener('keydown', handlePhysicalKey)
+    return () => window.removeEventListener('keydown', handlePhysicalKey)
+  })
 
   const newGame = () => {
     setAnswer(chooseAnswer(ALLOWED_WORDS)); setGuesses([]); setTileResults([]); setCurrentGuess(''); setKeyboardState({}); setMessage('Find the hidden five-letter word.')
@@ -68,7 +82,7 @@ export function Practice() {
         guesses={guesses}
         keyboardState={keyboardState}
         mode="practice"
-        onKeyPress={handleKeyPress}
+          onKeyPress={handleKeyPress}
         status={resultMessage}
         tileResults={tileResults}
       />

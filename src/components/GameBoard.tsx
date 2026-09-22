@@ -53,7 +53,7 @@ export function GameBoard({
             maximumGuesses={maximumGuesses}
             tileResults={tileResults}
           />
-          {interactive && <Keyboard disabled={false} keyStates={keyboardState} onKeyPress={onKeyPress} />}
+          {interactive && <Keyboard disabled={status.includes('Solved') || status.startsWith('The answer was')} keyStates={keyboardState} onKeyPress={onKeyPress} />}
         </div>
       </div>
     </section>

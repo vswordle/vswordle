@@ -60,6 +60,7 @@ export interface PlayerStats {
   playerId: string
   username: string
   email?: string
+  avatarUrl?: string
   elo: number
   gamesPlayed: number
   wins: number
