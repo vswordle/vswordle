@@ -50,7 +50,21 @@ export function leaveMatchmaking(): Promise<{ success: boolean }> {
 }
 
 export function submitGuess(matchId: string, guess: string): Promise<SubmitGuessResponse> {
-  return invoke('submit-guess', { matchId, guess })
+  return invoke<{
+    statuses: string[]
+    solved: boolean
+    guessNumber: number
+    matchFinished: boolean
+    result?: 'player_one' | 'player_two' | 'draw'
+    opponentProgress: { guessesUsed: number; tileResults: OpponentProgress['rows']; hasSolved: boolean; isFinished: boolean }
+  }>('submit-guess', { matchId, guess }).then((response) => ({
+    ...response,
+    opponentProgress: { guessesUsed: response.opponentProgress.guessesUsed, rows: response.opponentProgress.tileResults, hasSolved: response.opponentProgress.hasSolved, isFinished: response.opponentProgress.isFinished },
+  }))
+}
+
+export function finishMatch(matchId: string): Promise<Record<string, unknown>> {
+  return invoke('finish-match', { matchId })
 }
 
 export function requestRematch(matchId: string): Promise<{ matchId: string }> {

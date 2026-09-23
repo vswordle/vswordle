@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPrivateLobby, joinPrivateLobby } from '../lib/multiplayer'
 import { ensureAnonymousSession } from '../lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
 export function Private() {
   const [lobbyCode, setLobbyCode] = useState('')
@@ -8,17 +9,18 @@ export function Private() {
   const [matchId, setMatchId] = useState('')
   const [message, setMessage] = useState('Create a lobby or join a friend with their code.')
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   const create = async () => {
     setLoading(true)
     try { await ensureAnonymousSession(); const result = await createPrivateLobby(); setCreatedCode(result.lobbyCode); setMessage('Share this code with your opponent.') }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not create lobby.') }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not create lobby. Deploy the lobby Edge Function and enable Anonymous Sign-ins in Supabase.') }
     setLoading(false)
   }
   const join = async () => {
     setLoading(true)
-    try { await ensureAnonymousSession(); const result = await joinPrivateLobby(lobbyCode); setMatchId(result.matchId); setMessage('Lobby joined. Match active.') }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not join lobby.') }
+    try { await ensureAnonymousSession(); const result = await joinPrivateLobby(lobbyCode); setMatchId(result.matchId); setMessage('Lobby joined. Match active.'); navigate(`/match/${result.matchId}`) }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not join lobby. Deploy the lobby Edge Function and enable Anonymous Sign-ins in Supabase.') }
     setLoading(false)
   }
 

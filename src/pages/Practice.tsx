@@ -4,19 +4,32 @@ import { evaluateGuess, hasFiveLetters, isAllowedWord, isGuessSolved, remainingG
 import type { KeyboardState } from '../components/Keyboard'
 import type { TileState } from '../types/game'
 
-const ALLOWED_WORDS = ['apple', 'brave', 'crane', 'crisp', 'dream', 'flame', 'grape', 'house', 'light', 'ocean', 'plant', 'proud', 'quiet', 'river', 'scale', 'sharp', 'smile', 'stone', 'train', 'world']
+const FALLBACK_WORDS = ['apple', 'brave', 'crane', 'crisp', 'dream', 'flame', 'grape', 'house', 'light', 'ocean', 'plant', 'proud', 'quiet', 'river', 'scale', 'sharp', 'smile', 'stone', 'train', 'world']
 
 function chooseAnswer(words: readonly string[]): string {
   return words[Math.floor(Math.random() * words.length)]
 }
 
 export function Practice() {
-  const [answer, setAnswer] = useState(() => chooseAnswer(ALLOWED_WORDS))
+  const [allowedWords, setAllowedWords] = useState<string[]>(FALLBACK_WORDS)
+  const [answer, setAnswer] = useState(() => chooseAnswer(FALLBACK_WORDS))
   const [guesses, setGuesses] = useState<string[]>([])
   const [tileResults, setTileResults] = useState<TileState[][]>([])
   const [currentGuess, setCurrentGuess] = useState('')
   const [keyboardState, setKeyboardState] = useState<KeyboardState>({})
   const [message, setMessage] = useState('Find the hidden five-letter word.')
+
+  useEffect(() => {
+    let active = true
+    void fetch(`${import.meta.env.BASE_URL}words.txt`)
+      .then((response) => response.ok ? response.text() : Promise.reject(new Error('Word list unavailable')))
+      .then((text) => {
+        const words = text.split(/\s+/).map((word) => word.trim().toLowerCase()).filter((word) => /^[a-z]{5}$/.test(word))
+        if (active && words.length > 100) { setAllowedWords(words); setAnswer(chooseAnswer(words)) }
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [])
 
   const solved = tileResults.some(isGuessSolved)
   const finished = solved || guesses.length >= 6
@@ -40,7 +53,7 @@ export function Practice() {
     const guess = currentGuess.toLowerCase()
     if (finished) return
     if (!hasFiveLetters(guess)) { setMessage('Guesses must contain five letters.'); return }
-    if (!isAllowedWord(guess, ALLOWED_WORDS)) { setMessage('That word is not in the practice list.'); return }
+    if (!isAllowedWord(guess, allowedWords)) { setMessage('That word is not in the practice list.'); return }
 
     const results = evaluateGuess(guess, answer)
     setGuesses((previous) => [...previous, guess])
@@ -71,7 +84,7 @@ export function Practice() {
   })
 
   const newGame = () => {
-    setAnswer(chooseAnswer(ALLOWED_WORDS)); setGuesses([]); setTileResults([]); setCurrentGuess(''); setKeyboardState({}); setMessage('Find the hidden five-letter word.')
+    setAnswer(chooseAnswer(allowedWords)); setGuesses([]); setTileResults([]); setCurrentGuess(''); setKeyboardState({}); setMessage('Find the hidden five-letter word.')
   }
 
   return (

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { joinMatchmaking, leaveMatchmaking, subscribeToMatch, type MatchUpdate } from '../lib/multiplayer'
+import { useNavigate } from 'react-router-dom'
 
 export function Play() {
   const [matchId, setMatchId] = useState('')
   const [status, setStatus] = useState('Ready to find an opponent.')
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!matchId) return undefined
@@ -17,7 +19,7 @@ export function Play() {
     setLoading(true); setStatus('Finding an opponent...')
     try {
       const result = await joinMatchmaking()
-      if (result.matchId) { setMatchId(result.matchId); setStatus('Opponent found. Match active.') }
+      if (result.matchId) { setMatchId(result.matchId); setStatus('Opponent found. Match active.'); navigate(`/match/${result.matchId}`) }
       else setStatus('You are in the queue. We are widening the search as you wait.')
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not join matchmaking.') }
     setLoading(false)

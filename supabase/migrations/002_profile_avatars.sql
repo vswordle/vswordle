@@ -1,5 +1,10 @@
 alter table public.profiles add column if not exists avatar_url text;
 
+create policy "users update their own profile" on public.profiles
+  for update to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do update set public = true;

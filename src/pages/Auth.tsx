@@ -23,7 +23,7 @@ export function Auth({ initialMode = 'login', onAuthenticated }: AuthProps) {
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password, options: { data: { username: username.trim() || undefined } } })
     if (response.error) setError(response.error.message)
-    else if (mode === 'signup' && !response.data.session) setMessage('Check your email to confirm your account.')
+    else if (mode === 'signup' && !response.data.session) setMessage('Email confirmation is enabled in Supabase. Disable Confirm email in Authentication > Providers > Email, then sign up again.')
     else { setMessage(mode === 'signup' ? 'Account created.' : 'Signed in.'); onAuthenticated?.() }
     setLoading(false)
   }

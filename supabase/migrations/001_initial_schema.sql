@@ -65,7 +65,7 @@ create table public.match_player_states (
 
 create table public.lobbies (
   id uuid primary key default gen_random_uuid(),
-  lobby_code text not null unique check (lobby_code ~ '^[A-Z0-9]{6}$'),
+  lobby_code text not null unique check (lobby_code ~ '^[A-Z0-9]{5}$'),
   host_id uuid not null references public.profiles(id),
   guest_id uuid references public.profiles(id),
   status public.lobby_status not null default 'waiting',
@@ -431,6 +431,55 @@ revoke all on function public.join_public_matchmaking() from public, anon;
 revoke all on function public.leave_public_matchmaking() from public, anon;
 grant execute on function public.join_public_matchmaking() to authenticated;
 grant execute on function public.leave_public_matchmaking() to authenticated;
+
+create or replace function public.create_private_lobby()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  lobby_id uuid;
+  lobby_code text;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  loop
+    lobby_code := upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 5));
+    begin
+      insert into public.lobbies (lobby_code, host_id) values (lobby_code, auth.uid()) returning id into lobby_id;
+      exit;
+    exception when unique_violation then
+      -- Retry the rare code collision inside the same transaction.
+    end;
+  end loop;
+  return jsonb_build_object('lobbyId', lobby_id, 'lobbyCode', lobby_code);
+end;
+$$;
+
+create or replace function public.join_private_lobby(p_lobby_code text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  lobby_row public.lobbies%rowtype;
+  match_id uuid;
+  answer text;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  select * into lobby_row from public.lobbies where lobby_code = upper(trim(p_lobby_code)) and status = 'waiting' for update;
+  if not found then raise exception 'Lobby not found or already started'; end if;
+  if lobby_row.host_id = auth.uid() then raise exception 'You cannot join your own lobby'; end if;
+  select word into answer from public.allowed_words order by md5(word || clock_timestamp()::text) limit 1;
+  if answer is null then raise exception 'No server word list configured'; end if;
+  insert into public.lobbies (id, lobby_code, host_id, guest_id, status, created_at)
+    values (lobby_row.id, lobby_row.lobby_code, lobby_row.host_id, auth.uid(), 'started', lobby_row.created_at)
+    on conflict (id) do update set guest_id = excluded.guest_id, status = excluded.status;
+  insert into public.matches (mode, player_one, player_two, status, started_at)
+    values ('private', lobby_row.host_id, auth.uid(), 'active', now()) returning id into match_id;
+  insert into public.match_secrets (match_id, secret_word) values (match_id, answer);
+  insert into public.match_player_states (match_id, player_id) values (match_id, lobby_row.host_id), (match_id, auth.uid());
+  return jsonb_build_object('matchId', match_id, 'lobbyId', lobby_row.id);
+end;
+$$;
+
+revoke all on function public.create_private_lobby() from public, anon;
+revoke all on function public.join_private_lobby(text) from public, anon;
+grant execute on function public.create_private_lobby() to authenticated;
+grant execute on function public.join_private_lobby(text) to authenticated;
 
 alter publication supabase_realtime add table public.matches;
 alter publication supabase_realtime add table public.lobbies;

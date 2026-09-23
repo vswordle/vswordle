@@ -19,7 +19,7 @@ export function Profile({ onLogin }: ProfileProps) {
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) { if (mounted) { setError('Log in to view your profile.'); setLoading(false) }; return }
       const { data, error: profileError } = await supabase.from('profiles').select('id, username, avatar_url, elo, games_played, wins, losses, draws, current_streak, best_streak, created_at').eq('id', user.id).single()
-      if (profileError || !data) { if (mounted) { setError(profileError?.message ?? 'Profile not found.'); setLoading(false) }; return }
+      if (profileError || !data) { if (mounted) { setError(profileError?.message ?? 'Profile not found. Apply the Supabase profile migration before using this page.'); setLoading(false) }; return }
       if (mounted) {
         setProfile({ playerId: data.id, username: data.username, email: user.email, avatarUrl: data.avatar_url ?? undefined, elo: data.elo, gamesPlayed: data.games_played, wins: data.wins, losses: data.losses, draws: data.draws, currentWinStreak: data.current_streak, bestWinStreak: data.best_streak, createdAt: data.created_at })
         setLoading(false)
