@@ -68,6 +68,7 @@ create table public.lobbies (
   lobby_code text not null unique check (lobby_code ~ '^[A-Z0-9]{5}$'),
   host_id uuid not null references public.profiles(id),
   guest_id uuid references public.profiles(id),
+  match_id uuid references public.matches(id),
   status public.lobby_status not null default 'waiting',
   created_at timestamptz not null default now(),
   check (guest_id is null or guest_id <> host_id)
@@ -456,7 +457,7 @@ create or replace function public.join_private_lobby(p_lobby_code text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   lobby_row public.lobbies%rowtype;
-  match_id uuid;
+  created_match_id uuid;
   answer text;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
@@ -465,14 +466,12 @@ begin
   if lobby_row.host_id = auth.uid() then raise exception 'You cannot join your own lobby'; end if;
   select word into answer from public.allowed_words order by md5(word || clock_timestamp()::text) limit 1;
   if answer is null then raise exception 'No server word list configured'; end if;
-  insert into public.lobbies (id, lobby_code, host_id, guest_id, status, created_at)
-    values (lobby_row.id, lobby_row.lobby_code, lobby_row.host_id, auth.uid(), 'started', lobby_row.created_at)
-    on conflict (id) do update set guest_id = excluded.guest_id, status = excluded.status;
   insert into public.matches (mode, player_one, player_two, status, started_at)
-    values ('private', lobby_row.host_id, auth.uid(), 'active', now()) returning id into match_id;
-  insert into public.match_secrets (match_id, secret_word) values (match_id, answer);
-  insert into public.match_player_states (match_id, player_id) values (match_id, lobby_row.host_id), (match_id, auth.uid());
-  return jsonb_build_object('matchId', match_id, 'lobbyId', lobby_row.id);
+    values ('private', lobby_row.host_id, auth.uid(), 'active', now()) returning id into created_match_id;
+  insert into public.match_secrets (match_id, secret_word) values (created_match_id, answer);
+  insert into public.match_player_states (match_id, player_id) values (created_match_id, lobby_row.host_id), (created_match_id, auth.uid());
+  update public.lobbies set guest_id = auth.uid(), status = 'started', match_id = created_match_id where id = lobby_row.id;
+  return jsonb_build_object('matchId', created_match_id, 'lobbyId', lobby_row.id);
 end;
 $$;
 

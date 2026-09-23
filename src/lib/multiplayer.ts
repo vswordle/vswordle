@@ -22,6 +22,12 @@ export interface MatchUpdate {
   winner_id: string | null
 }
 
+export interface LobbyUpdate {
+  id: string
+  status: string
+  match_id: string | null
+}
+
 async function invoke<T>(functionName: string, body: Record<string, unknown>): Promise<T> {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { data, error } = await supabase.functions.invoke(functionName, { body })
@@ -81,6 +87,16 @@ export function subscribeToMatch(matchId: string, onUpdate: (update: MatchUpdate
   const channel: RealtimeChannel = client
     .channel(`match:${matchId}`)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, (payload) => onUpdate(payload.new as MatchUpdate))
+    .subscribe()
+  return () => { void client.removeChannel(channel) }
+}
+
+export function subscribeToLobby(lobbyId: string, onUpdate: (update: LobbyUpdate) => void): () => void {
+  const client = supabase
+  if (!client) return () => undefined
+  const channel: RealtimeChannel = client
+    .channel(`lobby:${lobbyId}`)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, (payload) => onUpdate(payload.new as LobbyUpdate))
     .subscribe()
   return () => { void client.removeChannel(channel) }
 }

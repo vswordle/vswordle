@@ -23,7 +23,8 @@ export function Match() {
   const updateKeyboard = (word: string, results: TileState[]) => {
     const priority: Record<TileState, number> = { empty: 0, filled: 0, gray: 1, yellow: 2, green: 3 }
     setKeyboardState((previous) => word.split('').reduce<KeyboardState>((next, letter, index) => {
-      if (priority[results[index]] > priority[next[letter] ?? 'empty']) next[letter] = results[index]
+      const key = letter.toUpperCase()
+      if (priority[results[index]] > priority[next[key] ?? 'empty']) next[key] = results[index]
       return next
     }, { ...previous }))
   }

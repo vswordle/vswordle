@@ -44,7 +44,8 @@ export function Practice() {
     setKeyboardState((previous) => guess.split('').reduce<KeyboardState>((next, letter, index) => {
       const state = results[index]
       const priority = { empty: 0, filled: 0, gray: 1, yellow: 2, green: 3 }
-      if ((priority[state] ?? 0) > (priority[next[letter] ?? 'empty'] ?? 0)) next[letter] = state
+      const key = letter.toUpperCase()
+      if ((priority[state] ?? 0) > (priority[next[key] ?? 'empty'] ?? 0)) next[key] = state
       return next
     }, { ...previous }))
   }
