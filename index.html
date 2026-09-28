@@ -1,14 +1,243 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#111313" />
-    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
-    <title>WORDLE 1V1</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#789360">
+  <title>Little Field — Top-Down Starter</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap');
+    :root { color-scheme: light; font-family: 'DM Sans', sans-serif; font-synthesis: none; --ink: #202820; --paper: #f8f8f2; --muted: #727a6d; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #89a36f; color: var(--ink); }
+    #field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .topbar, .bottom-bar { position: fixed; z-index: 1; inset: 22px 24px auto; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+    .brand, .position { display: flex; align-items: center; height: 48px; border: 1px solid rgb(32 40 32 / 10%); border-radius: 4px; background: var(--paper); box-shadow: 0 3px 12px rgb(30 43 27 / 8%); }
+    .brand { gap: 11px; padding: 0 15px; }
+    .brand-mark { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 3px; background: #e6ecd9; color: #567147; }
+    .brand-mark svg { width: 17px; height: 17px; }
+    .brand-name { font-size: 14px; font-weight: 700; }
+    .brand-divider { height: 20px; width: 1px; background: #e2e3d9; }
+    .brand-mode, .position-label, .eyebrow, .coordinates, .key { font-family: 'DM Mono', monospace; text-transform: uppercase; }
+    .brand-mode { color: var(--muted); font-size: 10px; }
+    .position { gap: 10px; padding: 0 14px; }
+    .position-label { color: var(--muted); font-size: 9px; }
+    .coordinates { min-width: 71px; font-size: 11px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #6e9a55; box-shadow: 0 0 0 3px #e8eedf; }
+    .bottom-bar { inset: auto 24px 22px; align-items: end; }
+    .location { padding: 0 0 2px 2px; color: #fffef2; text-shadow: 0 1px 8px rgb(24 39 21 / 35%); }
+    .eyebrow { margin-bottom: 5px; font-size: 9px; opacity: .8; }
+    .location h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .location p { margin: 4px 0 0; font-size: 11px; opacity: .87; }
+    .controls { display: flex; align-items: center; gap: 15px; min-height: 54px; padding: 9px 13px; border: 1px solid rgb(32 40 32 / 10%); border-radius: 4px; background: var(--paper); box-shadow: 0 3px 12px rgb(30 43 27 / 8%); }
+    .keyset { display: grid; grid-template-columns: repeat(3, 25px); grid-template-rows: repeat(2, 25px); gap: 4px; }
+    .key { display: grid; width: 25px; height: 25px; place-items: center; border: 1px solid #dfdfd5; border-radius: 3px; background: #fffef9; color: #444b40; font-size: 9px; box-shadow: 0 1px 0 #e0e0d6; }
+    .key-column { display: contents; }
+    .key-column:first-child .key { grid-column: 2; grid-row: 1; }
+    .key-column:last-child .key:nth-child(1) { grid-column: 1; grid-row: 2; }
+    .key-column:last-child .key:nth-child(2) { grid-column: 2; grid-row: 2; }
+    .key-column:last-child .key:nth-child(3) { grid-column: 3; grid-row: 2; }
+    .controls-label { color: #4a5046; font-size: 11px; font-weight: 600; }
+    .controls-note { padding-left: 13px; border-left: 1px solid #e3e3da; color: var(--muted); font-size: 10px; }
+    @media (max-width: 560px) {
+      .topbar { inset: 12px 12px auto; }
+      .bottom-bar { inset: auto 12px 12px; align-items: end; }
+      .position { height: 42px; gap: 8px; padding: 0 10px; }
+      .brand { height: 42px; gap: 8px; padding: 0 10px; }
+      .brand-mode, .position-label, .controls-note, .brand-divider { display: none; }
+      .controls { min-height: 48px; gap: 9px; padding: 7px 9px; }
+      .key { width: 23px; height: 23px; }
+      .controls-label { font-size: 10px; }
+      .location h1 { font-size: 16px; }
+      .location p { max-width: 145px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field" aria-label="A grassy field with a person you can move using WASD or the arrow keys"></canvas>
+  <header class="topbar" aria-hidden="true">
+    <div class="brand">
+      <span class="brand-mark"><svg viewBox="0 0 20 20" fill="none"><path d="M4 14.6c.9-4.1 3.4-7.4 8.5-9.1M7.2 15.3c1.7-2.5 4.1-4.4 7.6-5.1M5.1 10.8c-.6-2-.4-3.9.5-5.6 2 .2 3.6 1.1 4.7 2.8M11 5.9c1.4-1.5 3.3-2.2 5.4-2 .1 2.1-.6 3.9-2.2 5.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="brand-name">Little Field</span><span class="brand-divider"></span><span class="brand-mode">Walkabout 01</span>
+    </div>
+    <div class="position"><span class="status-dot"></span><span class="position-label">Position</span><span id="coordinates" class="coordinates">000, 000</span></div>
+  </header>
+  <footer class="bottom-bar" aria-hidden="true">
+    <div class="location"><div class="eyebrow">Open field - No. 01</div><h1>A little room to roam.</h1><p>Take a walk. See where the grass goes.</p></div>
+    <div class="controls">
+      <div class="keyset" aria-label="W A S D or arrow keys"><div class="key-column"><span class="key">W</span></div><div class="key-column"><span class="key">A</span><span class="key">S</span><span class="key">D</span></div></div>
+      <span class="controls-label">Move</span><span class="controls-note">or arrow keys</span>
+    </div>
+  </footer>
+  <script>
+    (() => {
+      const canvas = document.querySelector('#field');
+      const context = canvas.getContext('2d');
+      const coordinates = document.querySelector('#coordinates');
+      const world = { width: 3600, height: 2800 };
+      const player = { x: world.width / 2, y: world.height / 2, facing: 0, speed: 220 };
+      const camera = { x: player.x, y: player.y };
+      const pressed = new Set();
+      const tile = document.createElement('canvas');
+      tile.width = tile.height = 384;
+      const tileContext = tile.getContext('2d');
+      let pattern;
+      let width = 0;
+      let height = 0;
+      let lastTime = 0;
+
+      function randomGenerator(seed) {
+        return () => {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296;
+        };
+      }
+
+      function createFieldTexture() {
+        const random = randomGenerator(28741);
+        tileContext.fillStyle = '#89a36f';
+        tileContext.fillRect(0, 0, tile.width, tile.height);
+        for (let i = 0; i < 15000; i += 1) {
+          const x = random() * tile.width;
+          const y = random() * tile.height;
+          tileContext.fillStyle = random() > .53 ? 'rgba(223,231,185,.12)' : 'rgba(44,77,47,.09)';
+          tileContext.beginPath();
+          tileContext.ellipse(x, y, random() * 5 + 1, random() * 3 + 1, random() * 3.14, 0, Math.PI * 2);
+          tileContext.fill();
+        }
+        for (let i = 0; i < 1000; i += 1) {
+          const x = random() * tile.width;
+          const y = random() * tile.height;
+          tileContext.strokeStyle = random() > .5 ? 'rgba(47,79,44,.2)' : 'rgba(238,238,197,.3)';
+          tileContext.lineWidth = .8 + random() * .8;
+          tileContext.beginPath();
+          tileContext.moveTo(x, y);
+          tileContext.quadraticCurveTo(x - 3 + random() * 6, y - 5, x - 2 + random() * 4, y - 8 - random() * 5);
+          tileContext.stroke();
+        }
+        pattern = context.createPattern(tile, 'repeat');
+      }
+
+      function resize() {
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      }
+
+      function drawScenery(offsetX, offsetY) {
+        context.fillStyle = pattern;
+        context.save();
+        context.translate(-offsetX % tile.width, -offsetY % tile.height);
+        context.fillRect(-tile.width, -tile.height, width + tile.width * 2, height + tile.height * 2);
+        context.restore();
+        const spacing = 212;
+        const startX = Math.floor(offsetX / spacing) * spacing;
+        const startY = Math.floor(offsetY / spacing) * spacing;
+        for (let x = startX; x <= offsetX + width + spacing; x += spacing) {
+          for (let y = startY; y <= offsetY + height + spacing; y += spacing) {
+            const value = Math.sin(x * .011 + y * .007) * 43758.5453;
+            const fraction = value - Math.floor(value);
+            if (fraction > .82) {
+              const screenX = x - offsetX + fraction * spacing;
+              const screenY = y - offsetY + (1 - fraction) * spacing;
+              context.fillStyle = fraction > .92 ? 'rgba(247,236,174,.78)' : 'rgba(231,239,211,.65)';
+              context.beginPath();
+              context.arc(screenX, screenY, 1.5, 0, Math.PI * 2);
+              context.arc(screenX + 4, screenY + 2, 1.1, 0, Math.PI * 2);
+              context.fill();
+            }
+          }
+        }
+      }
+
+      function drawPlayer(screenX, screenY) {
+        context.save();
+        context.translate(screenX, screenY);
+        context.rotate(player.facing);
+        context.fillStyle = 'rgba(34,48,33,.22)';
+        context.beginPath();
+        context.ellipse(1, 5, 13, 16, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#55493d';
+        context.beginPath();
+        context.ellipse(-4, 10, 3.5, 6.2, -.12, 0, Math.PI * 2);
+        context.ellipse(4, 10, 3.5, 6.2, .12, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#e8b995';
+        context.lineWidth = 4.5;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.moveTo(-8, -3);
+        context.lineTo(-10, 5);
+        context.moveTo(8, -3);
+        context.lineTo(10, 5);
+        context.stroke();
+        context.fillStyle = '#e87357';
+        context.beginPath();
+        context.ellipse(0, 1, 8.5, 10.5, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#f6d0ad';
+        context.beginPath();
+        context.arc(0, -10, 7.1, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#514238';
+        context.beginPath();
+        context.arc(0, -11.4, 7.2, Math.PI, Math.PI * 2);
+        context.quadraticCurveTo(8, -7, 5.5, -5.7);
+        context.quadraticCurveTo(3, -9, 0, -8.1);
+        context.quadraticCurveTo(-4, -7.7, -7.1, -9.5);
+        context.closePath();
+        context.fill();
+        context.fillStyle = '#514238';
+        context.beginPath();
+        context.arc(-2.7, -8.7, .7, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+      }
+
+      function frame(time) {
+        const elapsed = Math.min((time - lastTime) / 1000 || 0, .05);
+        lastTime = time;
+        let horizontal = Number(pressed.has('d') || pressed.has('arrowright')) - Number(pressed.has('a') || pressed.has('arrowleft'));
+        let vertical = Number(pressed.has('s') || pressed.has('arrowdown')) - Number(pressed.has('w') || pressed.has('arrowup'));
+        const magnitude = Math.hypot(horizontal, vertical);
+        if (magnitude > 0) {
+          horizontal /= magnitude;
+          vertical /= magnitude;
+          player.x = Math.max(18, Math.min(world.width - 18, player.x + horizontal * player.speed * elapsed));
+          player.y = Math.max(18, Math.min(world.height - 18, player.y + vertical * player.speed * elapsed));
+          player.facing = Math.atan2(vertical, horizontal) + Math.PI / 2;
+        }
+        const targetX = Math.max(width / 2, Math.min(world.width - width / 2, player.x));
+        const targetY = Math.max(height / 2, Math.min(world.height - height / 2, player.y));
+        camera.x += (targetX - camera.x) * Math.min(1, elapsed * 7);
+        camera.y += (targetY - camera.y) * Math.min(1, elapsed * 7);
+        const offsetX = camera.x - width / 2;
+        const offsetY = camera.y - height / 2;
+        drawScenery(offsetX, offsetY);
+        drawPlayer(player.x - offsetX, player.y - offsetY);
+        coordinates.textContent = `${String(Math.round(player.x)).padStart(3, '0')}, ${String(Math.round(player.y)).padStart(3, '0')}`;
+        window.requestAnimationFrame(frame);
+      }
+
+      window.addEventListener('keydown', (event) => {
+        const key = event.key.toLowerCase();
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+          event.preventDefault();
+          pressed.add(key);
+        }
+      });
+      window.addEventListener('keyup', (event) => pressed.delete(event.key.toLowerCase()));
+      window.addEventListener('blur', () => pressed.clear());
+      window.addEventListener('resize', resize);
+      createFieldTexture();
+      resize();
+      window.requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
 </html>
