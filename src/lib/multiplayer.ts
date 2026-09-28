@@ -36,11 +36,22 @@ async function invoke<T>(functionName: string, body: Record<string, unknown>): P
 }
 
 export function createPrivateLobby(): Promise<{ lobbyId: string; lobbyCode: string }> {
-  return invoke('lobby', { action: 'create', mode: 'private' })
+  return invoke<{ lobbyId: string; lobbyCode: string }>('lobby', { action: 'create', mode: 'private' }).catch(async (functionError) => {
+    if (!supabase) throw functionError
+    const { data, error } = await supabase.rpc('create_private_lobby')
+    if (error) throw new Error(`${functionError instanceof Error ? functionError.message : 'Lobby function unavailable'}; RPC fallback failed: ${error.message}`)
+    return data as { lobbyId: string; lobbyCode: string }
+  })
 }
 
 export function joinPrivateLobby(lobbyCode: string): Promise<{ matchId: string }> {
-  return invoke('lobby', { action: 'join', lobbyCode: lobbyCode.trim().toUpperCase() })
+  const normalizedCode = lobbyCode.trim().toUpperCase()
+  return invoke<{ matchId: string }>('lobby', { action: 'join', lobbyCode: normalizedCode }).catch(async (functionError) => {
+    if (!supabase) throw functionError
+    const { data, error } = await supabase.rpc('join_private_lobby', { p_lobby_code: normalizedCode })
+    if (error) throw new Error(`${functionError instanceof Error ? functionError.message : 'Lobby function unavailable'}; RPC fallback failed: ${error.message}`)
+    return data as { matchId: string }
+  })
 }
 
 export function leaveLobby(lobbyId: string): Promise<{ success: boolean }> {

@@ -12,24 +12,31 @@ export function Private() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  const describeError = (error: unknown, action: string) => {
+    if (error instanceof Error && error.message) return error.message
+    if (typeof error === 'object' && error !== null && 'message' in error) return String(error.message)
+    return `${action} failed. Check that Anonymous Sign-ins are enabled and the lobby migration is applied.`
+  }
+
   const create = async () => {
     setLoading(true)
     try { await ensureAnonymousSession(); const result = await createPrivateLobby(); setCreatedLobbyId(result.lobbyId); setCreatedCode(result.lobbyCode); setMessage('Share this code with your opponent.') }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not create lobby. Deploy the lobby Edge Function and enable Anonymous Sign-ins in Supabase.') }
+    catch (error) { setMessage(describeError(error, 'Create lobby')) }
     setLoading(false)
   }
   const join = async () => {
     setLoading(true)
     try { await ensureAnonymousSession(); const result = await joinPrivateLobby(lobbyCode); setMatchId(result.matchId); setMessage('Lobby joined. Match active.'); navigate(`/match/${result.matchId}`) }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Could not join lobby. Deploy the lobby Edge Function and enable Anonymous Sign-ins in Supabase.') }
+    catch (error) { setMessage(describeError(error, 'Join lobby')) }
     setLoading(false)
   }
 
   useEffect(() => {
     if (!createdLobbyId) return undefined
-    return subscribeToLobby(createdLobbyId, (update) => {
+    const unsubscribe = subscribeToLobby(createdLobbyId, (update) => {
       if (update.match_id) navigate(`/match/${update.match_id}`)
     })
+    return unsubscribe
   }, [createdLobbyId, navigate])
 
   return <main className="page-shell private-page"><span className="kicker">PRIVATE MATCH</span><h1>Bring your rivalry.</h1><p className="match-copy">Create a private lobby and share its five-character code. The server creates one shared secret word when the second player joins.</p><div className="private-actions"><section><h2>Create lobby</h2>{createdCode ? <strong className="lobby-code">{createdCode}</strong> : <button className="button button--primary" disabled={loading} onClick={() => void create}>Create lobby <span>↗</span></button>}</section><section><h2>Join lobby</h2><input aria-label="Lobby code" maxLength={5} onChange={(event) => setLobbyCode(event.target.value.toUpperCase())} placeholder="ABCDE" value={lobbyCode} /><button className="button button--primary" disabled={loading || lobbyCode.length !== 5} onClick={() => void join}>Join <span>↗</span></button></section></div><p className="match-status"><strong>{message}</strong>{matchId && <small>Match ID: {matchId}</small>}</p></main>

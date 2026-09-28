@@ -37,3 +37,25 @@ footer { display: flex; justify-content: space-between; padding: 26px 38px; bord
 .tile--filled { background: #1f2423; }
 .avatar-upload { display: inline-block; margin-top: 16px; color: var(--green); font: 10px 'DM Mono'; cursor: pointer; }
 .avatar-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* Terminal/ASCII direction: square controls, monospaced hierarchy, visible borders. */
+body, button, input { font-family: 'Courier New', Courier, monospace; }
+h1, h2, h3, .brand, .profile-stat strong { font-family: 'Courier New', Courier, monospace; letter-spacing: 0; }
+button, input, .avatar, .profile-avatar, .tile, .keyboard-key, .mode-card, .auth-card, .hero-board-wrap, .opponent-board { border-radius: 0; }
+.brand-mark { width: auto; height: auto; padding: 0 4px; color: var(--green); background: transparent; font-family: inherit; }
+.brand-mark::before { content: '['; }.brand-mark::after { content: ']'; }
+.brand-mark { font-size: 0; }.brand-mark::before, .brand-mark::after { font-size: 15px; }.brand-mark { font-size: 15px; }
+.kicker::before, .panel-kicker::before { content: '[ '; }.kicker::after, .panel-kicker::after { content: ' ]'; }
+.button { border: 1px solid var(--green); background: transparent; color: var(--green); text-transform: uppercase; letter-spacing: 0; }
+.button--primary { color: #111313; background: var(--green); }
+.button--quiet { border-color: transparent; color: var(--muted); }
+.site-header, footer { border-color: #3b433e; }
+.site-header::before { content: '/*'; color: var(--muted); font: 12px 'Courier New', Courier, monospace; }
+.site-header::after { content: '*/'; color: var(--muted); font: 12px 'Courier New', Courier, monospace; }
+.site-header { gap: 18px; }.site-header .brand { margin-right: auto; }.site-header nav { margin-left: 0; }
+.hero-copy h1 { font-family: 'Courier New', Courier, monospace; letter-spacing: 0; }.hero-copy h1 em { color: var(--green); }
+.home-visual span { font-family: 'Courier New', Courier, monospace; }
+.home-visual::before { content: '+--- ASCII BOARD ---+'; position: absolute; margin-top: -25px; color: var(--muted); font: 10px 'Courier New', Courier, monospace; }
+.home-visual { position: relative; padding-top: 15px; }
+.mode-card::before { content: '> '; color: var(--green); }.mode-card h2, .mode-card h3 { font-family: 'Courier New', Courier, monospace; }
+.tile { font-family: 'Courier New', Courier, monospace; }.keyboard-key { font-family: 'Courier New', Courier, monospace; }

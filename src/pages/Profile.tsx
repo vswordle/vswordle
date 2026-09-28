@@ -43,7 +43,11 @@ export function Profile({ onLogin }: ProfileProps) {
     const { data: publicFile } = supabase.storage.from('avatars').getPublicUrl(path)
     const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicFile.publicUrl }).eq('id', user.id)
     if (updateError) setError(updateError.message)
-    else setProfile((previous) => previous ? { ...previous, avatarUrl: publicFile.publicUrl } : previous)
+    else {
+      const previousPath = profile.avatarUrl?.split('/avatars/')[1]
+      if (previousPath) await supabase.storage.from('avatars').remove([decodeURIComponent(previousPath)])
+      setProfile((previous) => previous ? { ...previous, avatarUrl: publicFile.publicUrl } : previous)
+    }
     setUploading(false)
   }
 
